@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>アスベスト薬液計算ツール</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --card:      #21253a;
+    --border:    #2e3450;
+    --accent:    #f5a623;
+    --accent2:   #e85d04;
+    --text:      #e8ecf5;
+    --muted:     #8892aa;
+    --green:     #2ecc71;
+    --mono:      'Share Tech Mono', monospace;
+    --sans:      'Noto Sans JP', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0 0 60px;
+  }
+
+  /* ── ヘッダー ── */
+  header {
+    background: linear-gradient(135deg, #1a1d27 0%, #12162a 100%);
+    border-bottom: 2px solid var(--accent);
+    padding: 18px 20px 14px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,.5);
+  }
+  header h1 {
+    font-size: clamp(1rem, 4vw, 1.4rem);
+    font-weight: 900;
+    letter-spacing: .04em;
+    color: var(--accent);
+    display: flex; align-items: center; gap: 10px;
+  }
+  header h1 .icon { font-size: 1.4em; }
+  header p { font-size: .72rem; color: var(--muted); margin-top: 4px; }
+
+  /* ── メインレイアウト ── */
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 20px 14px;
+    display: grid;
+    gap: 16px;
+  }
+
+  /* ── カード ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card-title {
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 4px; height: 16px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* ── フォーム要素 ── */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+  @media (max-width: 480px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: .06em;
+  }
+  label span.unit {
+    font-weight: 400;
+    color: #5a6480;
+    font-size: .68rem;
+  }
+
+  select, input[type="number"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: .9rem;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%238892aa'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+  select:focus, input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(245,166,35,.15);
+  }
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  /* スライダー */
+  .slider-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 6px rgba(245,166,35,.5);
+    cursor: pointer;
+    transition: transform .15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:active { transform: scale(1.2); }
+  .slider-val {
+    font-family: var(--mono);
+    font-size: .95rem;
+    color: var(--accent);
+    min-width: 36px;
+    text-align: right;
+  }
+  /* ── 希釈率 ＋／－ ボタン ── */
+  .dilution-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .dilution-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    border: 2px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    font-size: 1.5rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .15s, color .15s, transform .1s;
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .dilution-btn:hover  { background: var(--accent); color: var(--bg); }
+  .dilution-btn:active { transform: scale(.92); }
+  .dilution-btn:disabled { opacity: .3; cursor: default; }
+  .dilution-display {
+    flex: 1;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #fff;
+    background: #1a3a6e;
+    border: 2px solid rgba(255,255,255,.15);
+    border-radius: 8px;
+    padding: 10px 0 8px;
+    letter-spacing: .05em;
+    transition: background .4s ease, border-color .4s ease, color .4s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .dilution-display .dil-num {
+    position: relative;
+    z-index: 1;
+  }
+  .dilution-display .dil-label {
+    display: block;
+    font-size: .62rem;
+    letter-spacing: .12em;
+    margin-top: 2px;
+    font-family: var(--sans);
+    font-weight: 700;
+    opacity: .75;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── スキップ（－）トグル ── */
+  .skip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .skip-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-size: .7rem;
+    color: var(--muted);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .skip-toggle input[type="checkbox"] { display: none; }
+  .skip-box {
+    width: 32px;
+    height: 18px;
+    border-radius: 9px;
+    background: var(--border);
+    position: relative;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+  .skip-box::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform .2s, background .2s;
+  }
+  .skip-toggle input:checked ~ .skip-box { background: rgba(231,76,60,.35); }
+  .skip-toggle input:checked ~ .skip-box::after {
+    transform: translateX(14px);
+    background: #e74c3c;
+  }
+  .field.skipped input,
+  .field.skipped select { opacity: .35; pointer-events: none; }
+  .field.skipped label { opacity: .45; }
+  .skip-badge {
+    font-size: .64rem;
+    color: #e74c3c;
+    background: rgba(231,76,60,.12);
+    border: 1px solid rgba(231,76,60,.3);
+    border-radius: 4px;
+    padding: 1px 6px;
+    display: none;
+  }
+  .field.skipped .skip-badge { display: inline; }
+
+  /* ── 計算ボタン ── */
+  .btn-calc {
+    width: 100%;
+    padding: 16px;
+    font-family: var(--sans);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--bg);
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    box-shadow: 0 4px 20px rgba(245,166,35,.3);
+  }
+  .btn-calc:hover { opacity: .9; }
+  .btn-calc:active { transform: scale(.98); }
+
+  /* ── 結果エリア ── */
+  #result-area { display: none; }
+  #result-area.visible { display: block; }
+
+  .result-summary {
+    background: linear-gradient(135deg, #1c2640 0%, #1a2035 100%);
+    border: 2px solid var(--accent);
+    border-radius: 12px;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 420px) {
+    .result-summary { grid-template-columns: 1fr; }
+  }
+  .res-box {
+    text-align: center;
+    padding: 14px 10px;
+    background: rgba(255,255,255,.04);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .res-box .lbl {
+    font-size: .66rem;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .res-box .val {
+    font-family: var(--mono);
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.1;
+  }
+  .res-box .val.green { color: var(--green); }
+  .res-box .sub {
+    font-size: .7rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .res-box.highlight {
+    border-color: var(--green);
+    background: rgba(46,204,113,.06);
+    grid-column: 1 / -1;
+  }
+
+  /* ── 計算過程 ── */
+  .steps-title {
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .step-list { display: flex; flex-direction: column; gap: 6px; }
+  .step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-radius: 8px;
+    border-left: 3px solid var(--border);
+    animation: fadeIn .3s ease both;
+    font-size: .82rem;
+  }
+  .step-item:nth-child(1) { animation-delay: .05s; border-left-color: #4a90d9; }
+  .step-item:nth-child(2) { animation-delay: .10s; border-left-color: #9b59b6; }
+  .step-item:nth-child(3) { animation-delay: .15s; border-left-color: #e74c3c; }
+  .step-item:nth-child(4) { animation-delay: .20s; border-left-color: var(--accent2); }
+  .step-item:nth-child(5) { animation-delay: .25s; border-left-color: var(--accent); }
+  .step-item:nth-child(6) { animation-delay: .30s; border-left-color: var(--green); }
+
+  .step-num {
+    font-family: var(--mono);
+    font-size: .7rem;
+    color: var(--muted);
+    min-width: 22px;
+    padding-top: 1px;
+  }
+  .step-content { flex: 1; }
+  .step-desc { color: var(--muted); font-size: .72rem; margin-bottom: 2px; }
+  .step-formula {
+    font-family: var(--mono);
+    font-size: .83rem;
+    color: var(--text);
+  }
+  .step-formula .ans {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── 薬剤プリセット説明 ── */
+  .drug-info {
+    font-size: .73rem;
+    color: var(--muted);
+    margin-top: 6px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent);
+    line-height: 1.6;
+    display: none;
+  }
+  .drug-info.show { display: block; }
+
+  /* ── エラー ── */
+  .error-msg {
+    background: rgba(231,76,60,.12);
+    border: 1px solid rgba(231,76,60,.4);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: .82rem;
+    color: #e74c3c;
+  }
+
+  /* フッター */
+  footer {
+    text-align: center;
+    font-size: .65rem;
+    color: #3a4060;
+    padding: 30px 20px 0;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="icon">🛡️</span>アスベスト薬液計算ツール</h1>
+  <p>飛散防止剤・飛散抑制剤の希釈・塗布量・缶数を自動計算</p>
+</header>
+
+<main>
+
+  <!-- 施工条件 -->
+  <div class="card">
+    <div class="card-title">施工条件</div>
+    <div class="form-grid">
+
+      <div class="field full">
+        <label>薬剤種類</label>
+        <select id="drugSelect" onchange="onDrugChange()">
+          <option value="custom">── その他（カスタム入力） ──</option>
+          <option value="asbestor">Asベスター（アス・プランテック）</option>
+          <option value="toacron">トアアクロン M-35（トウペ）</option>
+          <option value="ascatch_cc">アスキャッチ CC・透明タイプ（クリアライト工業）</option>
+          <option value="ascatch_cw">アスキャッチ CW・白色タイプ（クリアライト工業）</option>
+          <option value="pelican">ペリカンアストロン</option>
+        </select>
+        <div class="drug-info" id="drugInfo"></div>
+      </div>
+
+      <div class="field">
+        <label>施工面積 <span class="unit">㎡</span></label>
+        <input type="number" id="area" value="100" min="1" step="0.1" oninput="clearResult()">
+      </div>
+
+      <div class="field" id="field-thickness">
+        <label>塗膜厚み <span class="unit">mm</span> <span class="skip-badge">－ スキップ中</span></label>
+        <input type="number" id="thickness" value="2.5" min="0.1" step="0.1" oninput="clearResult()">
+        <div class="skip-row">
+          <label class="skip-toggle">
+            <input type="checkbox" id="skip-thickness" onchange="toggleSkip('thickness')">
+            <span class="skip-box"></span>
+            <span>－ 該当なし（厚み×1 で計算）</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>原液密度 / 塗布量 <span class="unit">kg/㎡（1mm厚）</span></label>
+        <input type="number" id="density" value="0.70" min="0.01" step="0.01" oninput="clearResult()">
+      </div>
+
+      <div class="field" id="field-loss">
+        <label>損失率（ロス） <span class="unit">%</span> <span class="skip-badge">－ スキップ中</span></label>
+        <input type="number" id="loss" value="5" min="0" max="50" step="1" oninput="clearResult()">
+        <div class="skip-row">
+          <label class="skip-toggle">
+            <input type="checkbox" id="skip-loss" onchange="toggleSkip('loss')">
+            <span class="skip-box"></span>
+            <span>－ 該当なし（ロス 0% で計算）</span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 希釈設定 -->
+  <div class="card">
+    <div class="card-title">希釈・容量設定</div>
+    <div class="form-grid">
+
+      <div class="field full">
+        <label>希釈率（原液 1 に対して水/溶剤） <span class="unit">倍</span></label>
+        <div class="slider-wrap">
+          <input type="hidden" id="dilution" value="10">
+          <!-- PageDown（－）／PageUp（＋）ボタン -->
+          <div class="dilution-ctrl">
+            <button class="dilution-btn" id="btnMinus" onclick="stepDilution(-0.5)" title="PageDown（−0.5倍）">▼</button>
+            <div class="dilution-display" id="dilutionDisplay">
+              <span class="dil-num">10</span>
+              <span class="dil-label">×10 希釈</span>
+            </div>
+            <button class="dilution-btn" id="btnPlus"  onclick="stepDilution(+0.5)" title="PageUp（+0.5倍）">▲</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>缶容量 <span class="unit">kg/缶</span></label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="canSizeSelect" onchange="onCanSizeSelect()" style="flex:1;">
+            <option value="4">4 kg</option>
+            <option value="15">15 kg</option>
+            <option value="16">16 kg（一斗缶相当）</option>
+            <option value="18" selected>18 kg</option>
+            <option value="20">20 kg</option>
+            <option value="200">200 kg（ドラム缶）</option>
+            <option value="custom">手入力…</option>
+          </select>
+          <input type="number" id="canSize" value="18" min="0.1" step="0.1"
+                 style="width:80px;flex-shrink:0;" oninput="onCanSizeInput()">
+        </div>
+      </div>
+
+      <div class="field" id="field-sg">
+        <label>原液比重 <span class="unit">kg/ℓ</span> <span class="skip-badge">－ スキップ中</span></label>
+        <input type="number" id="sg" value="1.1" min="0.5" max="2.5" step="0.01" oninput="clearResult()">
+        <div class="skip-row">
+          <label class="skip-toggle">
+            <input type="checkbox" id="skip-sg" onchange="toggleSkip('sg')">
+            <span class="skip-box"></span>
+            <span>－ 該当なし（ℓ換算ステップを省略）</span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 計算ボタン -->
+  <button class="btn-calc" onclick="calculate()">▶ 計算する</button>
+
+  <!-- 結果 -->
+  <div id="result-area">
+
+    <div id="error-box" class="error-msg" style="display:none;"></div>
+
+    <div id="result-content">
+      <div class="result-summary" id="summaryGrid"></div>
+
+      <div class="card">
+        <div class="card-title">計算過程</div>
+        <div class="steps-title">ステップごとの明細</div>
+        <div class="step-list" id="stepList"></div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>※ 本ツールの計算結果はあくまで目安です。実際の施工では製品仕様書・労働安全衛生法・石綿障害予防規則に従ってください。</footer>
+
+<script>
+/* ─── 薬剤プリセット（5製品） ─── */
+const PRESETS = {
+  asbestor: {
+    density: 0.18, sg: 1.03, dilution: 10, loss: 10, thickness: 0.1, canSize: 18,
+    info: '【Asベスター／アス・プランテック】\n' +
+          '主成分：エチレン酢酸ビニル系樹脂　荷姿：18 kg/缶\n' +
+          '用途：飛散抑制剤（除去時）・飛散防止剤（除去後固化）\n' +
+          '希釈：水で任意の割合に希釈可能。抑制剤は10倍希釈が標準目安。\n' +
+          '※希釈率・塗布量は用途・現場条件に応じて変更してください。'
+  },
+  toacron: {
+    density: 0.15, sg: 1.03, dilution: 10, loss: 10, thickness: 0.1, canSize: 18,
+    info: '【トアアクロン M-35／株式会社トウペ】\n' +
+          '主成分：アクリル系エマルション　色相：乳白色（乾燥後透明）　荷姿：18 kg/缶\n' +
+          '用途：①吹付けアスベストの飛散抑制剤　②除去後の下塗り塗料　③石綿含有塗材除去後の下塗り\n' +
+          '施工：散水ポンプ・エアレス塗装。F☆☆☆☆取得。\n' +
+          '※希釈率・塗布量は製品仕様書を確認の上、変更してください。'
+  },
+  ascatch_cc: {
+    density: 0.20, sg: 1.04, dilution: 1, loss: 10, thickness: 0.1, canSize: 15,
+    info: '【アスキャッチ CC・透明タイプ／クリアライト工業】\n' +
+          '主成分：樹脂エマルション　色相：乳白色液体（乾燥後透明）　荷姿：15 kg/缶\n' +
+          '用途：除去作業（湿潤飛散防止・表面固化・養生シート固化）／封じ込め工法（内部浸透処理）\n' +
+          '希釈：原液使用が基本。吹き難い場合は粘度調整として10%以下の水で希釈。\n' +
+          '国土交通大臣認定取得（MAEN-0035）・F☆☆☆☆'
+  },
+  ascatch_cw: {
+    density: 0.20, sg: 1.04, dilution: 1, loss: 10, thickness: 0.1, canSize: 15,
+    info: '【アスキャッチ CW・白色タイプ／クリアライト工業】\n' +
+          '主成分：樹脂エマルション　色相：白色液体（乾燥後白色被膜）　荷姿：15 kg/缶\n' +
+          '用途：除去作業（湿潤飛散防止・表面固化）／封じ込め工法（表面固化処理）\n' +
+          '希釈：原液使用が基本。吹き難い場合は粘度調整として10%以下の水で希釈。\n' +
+          '国土交通大臣認定取得（MAEN-0035）・F☆☆☆☆'
+  },
+  pelican: {
+    density: 0.18, sg: 1.03, dilution: 5, loss: 10, thickness: 0.1, canSize: 18,
+    info: '【ペリカンアストロン】\n' +
+          '用途：吹付けアスベスト飛散防止剤・飛散抑制剤\n' +
+          '※下記の数値はカタログ一般値を参考に設定しています。\n' +
+          '実際の希釈率・塗布量・比重は製品仕様書・施工要領書で必ず確認し、数値を上書きしてください。'
+  },
+};
+
+function onDrugChange() {
+  const key = document.getElementById('drugSelect').value;
+  const info = document.getElementById('drugInfo');
+  if (key === 'custom') {
+    info.className = 'drug-info';
+    return;
+  }
+  const p = PRESETS[key];
+  document.getElementById('density').value    = p.density;
+  document.getElementById('sg').value         = p.sg;
+  syncDilution(p.dilution);
+  document.getElementById('loss').value       = p.loss;
+  document.getElementById('thickness').value  = p.thickness;
+  setCanSize(p.canSize);
+  info.style.whiteSpace = 'pre-line';
+  info.textContent = p.info;
+  info.className = 'drug-info show';
+  clearResult();
+}
+
+/* 缶容量セット共通関数 */
+function setCanSize(val) {
+  const sel = document.getElementById('canSizeSelect');
+  const inp = document.getElementById('canSize');
+  inp.value = val;
+  // selectの選択肢に一致するものがあれば選択、なければ「手入力」
+  const match = [...sel.options].find(o => o.value !== 'custom' && parseFloat(o.value) === parseFloat(val));
+  sel.value = match ? match.value : 'custom';
+}
+
+function onCanSizeSelect() {
+  const sel = document.getElementById('canSizeSelect');
+  if (sel.value === 'custom') {
+    document.getElementById('canSize').focus();
+  } else {
+    document.getElementById('canSize').value = sel.value;
+  }
+  clearResult();
+}
+
+function onCanSizeInput() {
+  // 手入力されたらselectを「手入力」に
+  const inp = parseFloat(document.getElementById('canSize').value);
+  const sel = document.getElementById('canSizeSelect');
+  const match = [...sel.options].find(o => o.value !== 'custom' && parseFloat(o.value) === inp);
+  sel.value = match ? match.value : 'custom';
+  clearResult();
+}
+
+function syncDilution(v) {
+  v = parseFloat(v);
+  document.getElementById('dilution').value = v;
+
+  // 1倍=原液(濃い青 #1a3a6e)、20倍=薄い水色(#6ab0d4)に向かってグラデーション
+  // t: 0(原液)→1(20倍)
+  const t = (v - 1) / 19;
+
+  // 濃い青 [26,58,110] → 薄い青灰 [80,130,175]
+  const r = Math.round(26  + (80  - 26 ) * t);
+  const g = Math.round(58  + (130 - 58 ) * t);
+  const b = Math.round(110 + (175 - 110) * t);
+  const bg = `rgb(${r},${g},${b})`;
+
+  // 文字色：薄くなるほど少し暗め
+  const textL = Math.round(255 - (255 - 180) * t);
+  const textColor = `rgb(${textL},${textL},${textL})`;
+
+  // ボーダー透明度：薄いほど薄く
+  const borderAlpha = (0.35 + 0.05 * t).toFixed(2);
+
+  const box = document.getElementById('dilutionDisplay');
+  box.style.background   = bg;
+  box.style.borderColor  = `rgba(255,255,255,${borderAlpha})`;
+  box.style.color        = textColor;
+
+  // ラベル
+  let label;
+  if (v <= 1) {
+    label = '原液';
+  } else {
+    label = `×${v} 希釈`;
+  }
+
+  box.innerHTML =
+    `<span class="dil-num">${v <= 1 ? '原液' : v}</span>` +
+    `<span class="dil-label">${v <= 1 ? '' : label}</span>`;
+
+  document.getElementById('btnMinus').disabled = v <= 1;
+  document.getElementById('btnPlus').disabled  = v >= 20;
+}
+
+function stepDilution(delta) {
+  const slider = document.getElementById('dilution');
+  const cur = parseFloat(slider.value);
+  const next = Math.min(20, Math.max(1, Math.round((cur + delta) * 10) / 10));
+  syncDilution(next);
+  clearResult();
+}
+
+/* PageUp/PageDown キー対応 */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'PageUp')   { e.preventDefault(); stepDilution(+0.5); }
+  if (e.key === 'PageDown') { e.preventDefault(); stepDilution(-0.5); }
+});
+
+function clearResult() {
+  document.getElementById('result-area').classList.remove('visible');
+}
+
+/* ─── スキップ制御 ─── */
+function toggleSkip(id) {
+  const cb    = document.getElementById('skip-' + id);
+  const field = document.getElementById('field-' + id);
+  if (cb.checked) {
+    field.classList.add('skipped');
+  } else {
+    field.classList.remove('skipped');
+  }
+  clearResult();
+}
+
+/* ─── メイン計算 ─── */
+function calculate() {
+  const area      = parseFloat(document.getElementById('area').value);
+  const density   = parseFloat(document.getElementById('density').value);
+  const dilution  = parseFloat(document.getElementById('dilution').value);
+  const canSize   = parseFloat(document.getElementById('canSize').value);
+
+  // スキップ判定
+  const skipThickness = document.getElementById('skip-thickness').checked;
+  const skipLoss      = document.getElementById('skip-loss').checked;
+  const skipSg        = document.getElementById('skip-sg').checked;
+
+  const thickness = skipThickness ? 1   : parseFloat(document.getElementById('thickness').value);
+  const loss      = skipLoss      ? 0   : parseFloat(document.getElementById('loss').value);
+  const sg        = skipSg        ? null: parseFloat(document.getElementById('sg').value);
+
+  const errBox = document.getElementById('error-box');
+  const ra = document.getElementById('result-area');
+  ra.classList.add('visible');
+  errBox.style.display = 'none';
+
+  // 必須チェック（スキップ項目は除外）
+  const mustCheck = [area, density, dilution, canSize, thickness];
+  if (!skipLoss) mustCheck.push(loss);
+  if (!skipSg)   mustCheck.push(sg);
+  if (mustCheck.some(v => isNaN(v) || v < 0) || area <= 0 || density <= 0 || dilution <= 0 || canSize <= 0) {
+    errBox.textContent = '⚠ 必須項目の数値を正しく入力してください。';
+    errBox.style.display = 'block';
+    document.getElementById('result-content').style.display = 'none';
+    return;
+  }
+  document.getElementById('result-content').style.display = 'block';
+
+  /* --- 計算（缶容量はkg単位で統一） --- */
+  // ① 平米あたり必要量（原液・ロス前）
+  const kgPerM2 = density * thickness;                        // kg/㎡
+
+  // ② 総必要量 kg（ロス込み）
+  const totalRaw = area * kgPerM2;
+  const lossFactor = 1 + loss / 100;
+  const totalWithLoss = totalRaw * lossFactor;                // kg（希釈後の総使用量）
+
+  // ③ 総必要量 ℓ換算（比重指定時のみ）
+  const totalLiter = skipSg ? null : totalWithLoss / sg;
+
+  // ④ 原液量（希釈率で除算）
+  const originalKg    = totalWithLoss / dilution;
+  const originalLiter = skipSg ? null : (totalLiter / dilution);
+
+  // ⑤ 原液の缶数（kg ÷ 缶容量kg・切り上げ）
+  const cansExact = originalKg / canSize;
+  const cans      = Math.ceil(cansExact);
+
+  // ⑥ 希釈水量
+  const waterKg    = originalKg * (dilution - 1);
+  const waterLiter = skipSg ? null : (originalLiter * (dilution - 1));
+
+  /* --- 計算過程ステップ --- */
+  const thicknessLabel = skipThickness ? '－（厚み係数 ×1）' : `${thickness} mm`;
+  const lossLabel      = skipLoss      ? '－（ロス 0%）'      : `${loss}%`;
+
+  const steps = [
+    {
+      desc: '① 平米あたり必要量（原液）',
+      formula: skipThickness
+        ? `${density} kg/㎡ <span style="color:var(--muted);font-size:.78em;">（厚み係数 ×1 適用）</span> = <span class="ans">${kgPerM2.toFixed(3)} kg/㎡</span>`
+        : `${density} kg/㎡/mm × ${thickness} mm = <span class="ans">${kgPerM2.toFixed(3)} kg/㎡</span>`
+    },
+    {
+      desc: `② 総必要量（ロス ${lossLabel} 込み）`,
+      formula: skipLoss
+        ? `${area} ㎡ × ${kgPerM2.toFixed(3)} kg/㎡ <span style="color:var(--muted);font-size:.78em;">（ロスなし）</span> = <span class="ans">${totalWithLoss.toFixed(3)} kg</span>`
+        : `${area} ㎡ × ${kgPerM2.toFixed(3)} kg/㎡ × ${lossFactor.toFixed(2)} = <span class="ans">${totalWithLoss.toFixed(3)} kg</span>`
+    },
+    {
+      desc: `③ 総必要量 ℓ換算`,
+      formula: skipSg
+        ? '<span style="color:var(--muted);">－ 比重スキップ（ℓ換算なし）</span>'
+        : `${totalWithLoss.toFixed(3)} kg ÷ ${sg} = <span class="ans">${totalLiter.toFixed(3)} ℓ</span>（参考値）`
+    },
+    {
+      desc: `④ 原液量（希釈率 ${dilution}倍 で除算）`,
+      formula: skipSg
+        ? `${totalWithLoss.toFixed(3)} kg ÷ ${dilution} = <span class="ans">${originalKg.toFixed(3)} kg</span>`
+        : `${totalWithLoss.toFixed(3)} kg ÷ ${dilution} = <span class="ans">${originalKg.toFixed(3)} kg</span>（${originalLiter.toFixed(3)} ℓ）`
+    },
+    {
+      desc: `⑤ 缶数（${canSize} kg/缶 で除算・切り上げ）`,
+      formula: `${originalKg.toFixed(3)} kg ÷ ${canSize} kg = ${cansExact.toFixed(3)} → 切り上げ <span class="ans">${cans} 缶</span>`
+    },
+    {
+      desc: `⑥ 希釈水量`,
+      formula: dilution <= 1
+        ? '原液使用のため希釈水不要'
+        : skipSg
+          ? `${originalKg.toFixed(3)} kg × ${(dilution - 1).toFixed(1)} = <span class="ans">${waterKg.toFixed(2)} kg</span>`
+          : `${originalKg.toFixed(3)} kg × ${(dilution - 1).toFixed(1)} = <span class="ans">${waterKg.toFixed(2)} kg</span>（${waterLiter.toFixed(2)} ℓ）`
+    },
+  ];
+
+  /* --- サマリーグリッド --- */
+  const summaryHTML = `
+    <div class="res-box">
+      <div class="lbl">㎡あたり必要量</div>
+      <div class="val">${kgPerM2.toFixed(2)}</div>
+      <div class="sub">kg/㎡</div>
+    </div>
+    <div class="res-box">
+      <div class="lbl">原液総量（ロス込）</div>
+      <div class="val">${originalKg.toFixed(1)}</div>
+      <div class="sub">${skipSg ? '' : '/ ' + originalLiter.toFixed(1) + ' ℓ'}kg</div>
+    </div>
+    ${dilution > 1 ? `
+    <div class="res-box">
+      <div class="lbl">希釈水量</div>
+      <div class="val">${waterKg.toFixed(1)}</div>
+      <div class="sub">kg / ${waterLiter.toFixed(1)} ℓ</div>
+    </div>` : ''}
+    <div class="res-box highlight">
+      <div class="lbl">必要缶数（切り上げ）</div>
+      <div class="val green">${cans}</div>
+      <div class="sub">缶（${canSize} kg/缶）</div>
+    </div>
+  `;
+
+  document.getElementById('summaryGrid').innerHTML = summaryHTML;
+
+  /* --- ステップ描画 --- */
+  const stepList = document.getElementById('stepList');
+  stepList.innerHTML = steps.map((s, i) => `
+    <div class="step-item">
+      <span class="step-num">STEP${i+1}</span>
+      <div class="step-content">
+        <div class="step-desc">${s.desc}</div>
+        <div class="step-formula">${s.formula}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // スクロール
+  document.getElementById('result-area').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>
